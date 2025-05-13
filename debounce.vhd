@@ -1,58 +1,69 @@
---------------------------------------------------------------------------------
---
---   FileName:         debounce.vhd
---   Dependencies:     none
---   Design Software:  Quartus II 32-bit Version 11.1 Build 173 SJ Full Version
---
---   HDL CODE IS PROVIDED "AS IS."  DIGI-KEY EXPRESSLY DISCLAIMS ANY
---   WARRANTY OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING BUT NOT
---   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
---   PARTICULAR PURPOSE, OR NON-INFRINGEMENT. IN NO EVENT SHALL DIGI-KEY
---   BE LIABLE FOR ANY INCIDENTAL, SPECIAL, INDIRECT OR CONSEQUENTIAL
---   DAMAGES, LOST PROFITS OR LOST DATA, HARM TO YOUR EQUIPMENT, COST OF
---   PROCUREMENT OF SUBSTITUTE GOODS, TECHNOLOGY OR SERVICES, ANY CLAIMS
---   BY THIRD PARTIES (INCLUDING BUT NOT LIMITED TO ANY DEFENSE THEREOF),
---   ANY CLAIMS FOR INDEMNITY OR CONTRIBUTION, OR OTHER SIMILAR COSTS.
---
---   Version History
---   Version 1.0 3/26/2012 Scott Larson
---     Initial Public Release
---
---------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer: 
+-- 
+-- Create Date: 02/18/2025 05:27:08 PM
+-- Design Name: 
+-- Module Name: debounce - Behavioral
+-- Project Name: 
+-- Target Devices: 
+-- Tool Versions: 
+-- Description: 
+-- 
+-- Dependencies: 
+-- 
+-- Revision:
+-- Revision 0.01 - File Created
+-- Additional Comments:
+-- 
+----------------------------------------------------------------------------------
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
 
-LIBRARY ieee;
-USE ieee.std_logic_1164.all;
-USE ieee.std_logic_unsigned.all;
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+use IEEE.NUMERIC_STD.ALL;
 
-ENTITY debounce IS
-  GENERIC(
-    counter_size  :  INTEGER := 20); --counter size (19 bits gives 10.5ms with 50MHz clock)
-  PORT(
-    clk     : IN  STD_LOGIC;  --input clock
-    btn  : IN  STD_LOGIC;  --input signal to be debounced
-    dbnc  : OUT STD_LOGIC); --debounced signal
-END debounce;
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx leaf cells in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
 
-ARCHITECTURE logic OF debounce IS
-  SIGNAL flipflops   : STD_LOGIC_VECTOR(1 DOWNTO 0); --input flip flops
-  SIGNAL counter_set : STD_LOGIC;                    --sync reset to zero
-  SIGNAL counter_out : STD_LOGIC_VECTOR(counter_size DOWNTO 0) := (OTHERS => '0'); --counter output
-BEGIN
+entity debounce is
+port(clk: in std_logic ;
+     btn: in std_logic ;
+     dbnc: out std_logic );
+end debounce;
 
-  counter_set <= flipflops(0) xor flipflops(1);   --determine when to start/reset counter
+architecture Behavioral of debounce is
+    signal shift_reg : std_logic_vector(1 downto 0) := "00";  -- 2-bit shift register
+    signal counter   : std_logic_vector (21 downto 0):= (others=>'0') ; --2500000 ticks
+    signal sig_dbnc : std_logic:='0' ; 
+begin
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            shift_reg(0) <= btn;
+            shift_reg(1) <= shift_reg(0);
+
+            if shift_reg(1) = '1' then
+                if (unsigned(counter)<1250000)  then
+                    counter <= std_logic_vector (unsigned(counter) + 1);  
+                   
+              
+                elsif (unsigned(counter)=1250000)then
+                sig_dbnc <= '1';  
+             
+               
+                 end if;
+             else 
+                 sig_dbnc <='0';
+                 counter <= (others => '0');
+            end if;
+        end if;
+    end process;
   
-  PROCESS(clk)
-  BEGIN
-    IF(clk'EVENT and clk = '1') THEN
-      flipflops(0) <= btn;
-      flipflops(1) <= flipflops(0);
-      If(counter_set = '1') THEN                  --reset counter because input is changing
-        counter_out <= (OTHERS => '0');
-      ELSIF(counter_out(counter_size) = '0') THEN --stable input time is not yet met
-        counter_out <= counter_out + 1;
-      ELSE                                        --stable input time is met
-        dbnc <= flipflops(1);
-      END IF;    
-    END IF;
-  END PROCESS;
-END logic;
+   
+  dbnc<=sig_dbnc ;
+    
+end Behavioral;
